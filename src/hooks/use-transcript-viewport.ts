@@ -25,6 +25,15 @@ import { useStore } from "@/state/store";
 
 export const AUTO_EXPAND_TOP_THRESHOLD = 250;
 
+// iOS WebKit keeps a touch fling's own offset and repaints it over a scrollTop written mid-fling, so the view flips
+// between the two. Hiding overflow for a frame ends the fling and lets the write stand.
+export function haltMomentum(el: HTMLElement): void {
+  el.style.overflowY = "hidden";
+  requestAnimationFrame(() => {
+    el.style.overflowY = "";
+  });
+}
+
 const WIDGETS_WITH_OWN_ARROW_KEYS = '[role="menu"], [role="menubar"], [role="listbox"], [role="tree"], [role="grid"], [role="tablist"], [role="radiogroup"], [role="slider"], select, [contenteditable="true"]';
 
 export function useTranscriptViewport<T extends { id: string; role?: string }>({
@@ -52,6 +61,7 @@ export function useTranscriptViewport<T extends { id: string; role?: string }>({
   const followRef = useRef(true);
   const previousScrollTop = useRef(0);
   const touchY = useRef(0);
+  const touchInput = useRef(false);
 
   const transcriptKey = `${ownerId}:${threadId}`;
   const tailStart = tailWindowStart(messages.length);
@@ -135,6 +145,7 @@ export function useTranscriptViewport<T extends { id: string; role?: string }>({
       expandingRef.current = false;
       return;
     }
+    if (touchInput.current) haltMomentum(el);
     el.scrollTop += el.scrollHeight - captured.height;
     previousScrollTop.current = el.scrollTop;
     expandingRef.current = false;
@@ -228,6 +239,7 @@ export function useTranscriptViewport<T extends { id: string; role?: string }>({
       if (el && e.target === el && e.nativeEvent.offsetX >= el.clientWidth) setBottomFollow(false);
     },
     onWheel: (e: WheelEvent<HTMLDivElement>) => {
+      touchInput.current = false;
       if (e.deltaY < 0 && canScroll()) {
         setBottomFollow(false);
         const el = scrollRef.current;
@@ -239,6 +251,7 @@ export function useTranscriptViewport<T extends { id: string; role?: string }>({
       }
     },
     onTouchStart: (e: TouchEvent<HTMLDivElement>) => {
+      touchInput.current = true;
       touchY.current = e.touches[0]?.clientY ?? 0;
     },
     onTouchMove: (e: TouchEvent<HTMLDivElement>) => {

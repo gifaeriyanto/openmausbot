@@ -93,6 +93,7 @@ class Scroller {
   scrollTop = 0;
   clientHeight = 400;
   clientWidth = 400;
+  style = { overflowY: "" };
   calls: ScrollToOptions[] = [];
   get scrollHeight() {
     return this.rows * ROW + this.extra;
@@ -392,6 +393,29 @@ describe("transcript viewport", () => {
     view.rerender({ messages: [...rows(50, 50), ...rows(50, 100)] });
     expect(view.current.olderPending).toBe(false);
     expect(scroller.scrollTop).toBe(300 + 50 * ROW);
+  });
+
+  it("ends a touch fling before shifting for earlier rows, then lets the reader scroll again", () => {
+    const view = mount({ messages: rows(300) });
+    scroller.scrollTop = 1_000;
+    view.act(() => view.current.scrollHandlers.onTouchStart({ touches: [{ clientY: 100 }] } as never));
+    view.current.showEarlier();
+    view.rerender({});
+    expect(scroller.style.overflowY).toBe("hidden");
+    expect(scroller.scrollTop).toBe(1_000 + 120 * ROW);
+    for (const frame of frames.splice(0)) frame(0);
+    expect(scroller.style.overflowY).toBe("");
+  });
+
+  it("leaves a wheel scroll's overflow alone when earlier rows arrive", () => {
+    const view = mount({ messages: rows(300) });
+    scroller.scrollTop = 1_000;
+    view.act(() => view.current.scrollHandlers.onTouchStart({ touches: [{ clientY: 100 }] } as never));
+    view.act(() => view.current.scrollHandlers.onWheel({ deltaY: -10 } as never));
+    view.current.showEarlier();
+    view.rerender({});
+    expect(scroller.style.overflowY).toBe("");
+    expect(scroller.scrollTop).toBe(1_000 + 120 * ROW);
   });
 
   it("drops a height capture taken in the thread the reader left", () => {
