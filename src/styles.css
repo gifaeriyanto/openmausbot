@@ -1063,6 +1063,14 @@
 .chat-md :is(strong, b) {
   font-weight: 600;
 }
+/* A path or URL has no break opportunity, and `break-word` leaves the min-content width at its full length, so the
+   bubble or a flex row around it would overflow. A table keeps its own horizontal scroll. */
+[data-chat-bubble] {
+  overflow-wrap: anywhere;
+}
+[data-chat-bubble] table {
+  overflow-wrap: normal;
+}
 [data-chat-bubble="simple"] :is(.chat-md, .chat-text),
 [data-chat-bubble="simple"].chat-text {
   line-height: 22px;
